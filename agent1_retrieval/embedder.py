@@ -11,8 +11,9 @@ client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
-chroma_client = chromadb.PersistentClient(path="./chroma_store")
-
+chroma_client = chromadb.PersistentClient(
+    path=os.path.join(os.path.dirname(__file__), '..', 'chroma_store')
+)
 # ✅ CORRECT model name from your debug output
 EMBEDDING_MODEL = "models/gemini-embedding-001"
 

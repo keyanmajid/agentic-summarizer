@@ -1,35 +1,45 @@
-from ddgs import DDGS
+import requests
+from bs4 import BeautifulSoup
 import time
 
-def search_web(query: str, max_results: int = 5, retries: int = 3) -> list[dict]:
-    """
-    Search DuckDuckGo for a query.
-    Retries up to 3 times if DuckDuckGo blocks the request.
-    """
-    for attempt in range(retries):
-        try:
-            results = []
-            with DDGS() as ddgs:
-                for result in ddgs.text(query, max_results=max_results):
-                    results.append({
-                        "title":   result.get("title", ""),
-                        "url":     result.get("href", ""),
-                        "snippet": result.get("body", "")
-                    })
-            return results
+def fetch_page_content(url: str) -> str:
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        except Exception as e:
-            print(f"  Attempt {attempt+1} failed: {e}")
-            time.sleep(2)
+        for tag in soup(["script", "style"]):
+            tag.decompose()
 
-    print("  Search failed after all retries.")
-    return []
+        text = soup.get_text(separator=" ", strip=True)
+        return text
+
+    except Exception as e:
+        print(f"  Failed to fetch {url}: {e}")
+        return ""
+
+
+def fetch_all(urls: list[str]) -> list[str]:
+    pages = []
+
+    for url in urls:
+        print(f"  Fetching: {url}")
+        content = fetch_page_content(url)
+        if content:
+            pages.append(content)
+        time.sleep(0.5)
+
+    print(f"\nSuccessfully fetched {len(pages)}/{len(urls)} pages.")
+    return pages
 
 
 if __name__ == "__main__":
+    from searcher import search_web
+
     results = search_web("benefits of solar energy", max_results=3)
-    for i, r in enumerate(results):
-        print(f"\nResult {i+1}")
-        print(f"  Title   : {r['title']}")
-        print(f"  URL     : {r['url']}")
-        print(f"  Snippet : {r['snippet'][:100]}...")
+    urls = [r["url"] for r in results]
+    pages = fetch_all(urls)
+
+    for i, page in enumerate(pages):
+        print(f"\n--- Page {i+1} preview ---")
+        print(page[:300])
